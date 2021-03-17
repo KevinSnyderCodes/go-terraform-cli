@@ -6,6 +6,10 @@ import (
 	"os/exec"
 )
 
+// TODO: Improve interface documentation
+// (Give each argument a name)
+// (Document each method)
+
 type Stater interface {
 	List(ListOptions) ([]string, error)
 	Move(string, string, MoveOptions) error
@@ -59,8 +63,6 @@ func (o *RunnerStater) Move(src string, dst string, options MoveOptions) error {
 		"terraform",
 		"state",
 		"move",
-		src,
-		dst,
 	}
 	if options.State != "" {
 		args = append(args, fmt.Sprintf("-state=%s", options.State))
@@ -68,6 +70,7 @@ func (o *RunnerStater) Move(src string, dst string, options MoveOptions) error {
 	if options.StateOut != "" {
 		args = append(args, fmt.Sprintf("-state-out=%s", options.StateOut))
 	}
+	args = append(args, src, dst)
 
 	cmd := exec.Cmd{
 		Args: args,

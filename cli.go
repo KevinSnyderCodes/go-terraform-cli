@@ -12,6 +12,9 @@ type CLI struct {
 	State Stater
 }
 
+// TODO: Move CLI.Run() off the CLI struct so it is not exported
+// (This will also solve the wonkiness of CLI holding Stater, and Stater holding CLI -- cyclic reference)
+
 func (o *CLI) Run(cmd *exec.Cmd) error {
 	cmd.Path = o.path
 	cmd.Dir = o.dir
