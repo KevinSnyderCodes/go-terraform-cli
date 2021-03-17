@@ -62,7 +62,7 @@ func (o *RunnerStater) Move(src string, dst string, options MoveOptions) error {
 	args := []string{
 		"terraform",
 		"state",
-		"move",
+		"mv",
 	}
 	if options.State != "" {
 		args = append(args, fmt.Sprintf("-state=%s", options.State))
