@@ -6,15 +6,18 @@ import (
 	"os/exec"
 )
 
-// TODO: Improve interface documentation
-// (Give each argument a name)
-// (Document each method)
-
 type Stater interface {
-	List(ListOptions) ([]string, error)
-	Move(string, string, MoveOptions) error
-	Pull(PullOptions) ([]byte, error)
-	Push(string, PushOptions) error
+	// List lists all resources in a workspace.
+	List(options ListOptions) ([]string, error)
+
+	// Move moves a resource.
+	Move(src string, dst string, options MoveOptions) error
+
+	// Pull pulls the state of a workspace.
+	Pull(options PullOptions) ([]byte, error)
+
+	// Push pushes the state of a workspace.
+	Push(path string, options PushOptions) error
 }
 
 type RunnerStater struct {

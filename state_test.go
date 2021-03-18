@@ -2,8 +2,11 @@ package terraformcli
 
 import (
 	"fmt"
+	"os/exec"
 	"reflect"
 	"testing"
+
+	"github.com/kylelemons/godebug/pretty"
 )
 
 const testRunnerStaterListSuccessWriteStdout = `
@@ -77,23 +80,36 @@ const testRunnerStaterPullSuccessWriteStdout = `
 
 func TestRunnerStater_List(t *testing.T) {
 	type fields struct {
-		runner Runner
+		// runner Runner
+		runner *mockRunner // Explicitly use mockRunner to test expected calls
 	}
 	type args struct {
 		options ListOptions
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []string
-		wantErr bool
+		name         string
+		fields       fields
+		args         args
+		wantCallsRun []*mockRunnerCallRun
+		want         []string
+		wantErr      bool
 	}{
 		{
 			name: "success",
 			fields: fields{
 				runner: &mockRunner{
 					writeStdout: []byte(testRunnerStaterListSuccessWriteStdout),
+				},
+			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"list",
+						},
+					},
 				},
 			},
 			want: []string{
@@ -109,6 +125,17 @@ func TestRunnerStater_List(t *testing.T) {
 					returnErr: fmt.Errorf("error"),
 				},
 			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"list",
+						},
+					},
+				},
+			},
 			wantErr: true,
 		},
 	}
@@ -118,6 +145,11 @@ func TestRunnerStater_List(t *testing.T) {
 				runner: tt.fields.runner,
 			}
 			got, err := o.List(tt.args.options)
+			if !reflect.DeepEqual(tt.fields.runner.callsRun, tt.wantCallsRun) {
+				diff := pretty.Compare(tt.fields.runner.callsRun, tt.wantCallsRun)
+				t.Errorf("mockRunner.Run() calls = %v, want %v\ndiff\n%s", tt.fields.runner.callsRun, tt.wantCallsRun, diff)
+				return
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RunnerStater.List() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -131,7 +163,8 @@ func TestRunnerStater_List(t *testing.T) {
 
 func TestRunnerStater_Move(t *testing.T) {
 	type fields struct {
-		runner Runner
+		// runner Runner
+		runner *mockRunner // Explicitly use mockRunner to test expected calls
 	}
 	type args struct {
 		src     string
@@ -139,10 +172,11 @@ func TestRunnerStater_Move(t *testing.T) {
 		options MoveOptions
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name         string
+		fields       fields
+		args         args
+		wantCallsRun []*mockRunnerCallRun
+		wantErr      bool
 	}{
 		{
 			name: "success",
@@ -152,6 +186,19 @@ func TestRunnerStater_Move(t *testing.T) {
 			args: args{
 				src: "null_resource.src",
 				dst: "null_resource.dst",
+			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"mv",
+							"null_resource.src",
+							"null_resource.dst",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -167,6 +214,21 @@ func TestRunnerStater_Move(t *testing.T) {
 					StateOut: "./stateout.tfstate",
 				},
 			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"mv",
+							"-state=./state.tfstate",
+							"-state-out=./stateout.tfstate",
+							"null_resource.src",
+							"null_resource.dst",
+						},
+					},
+				},
+			},
 		},
 		{
 			name: "error",
@@ -179,6 +241,19 @@ func TestRunnerStater_Move(t *testing.T) {
 				src: "null_resource.src",
 				dst: "null_resource.dst",
 			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"mv",
+							"null_resource.src",
+							"null_resource.dst",
+						},
+					},
+				},
+			},
 			wantErr: true,
 		},
 	}
@@ -187,7 +262,13 @@ func TestRunnerStater_Move(t *testing.T) {
 			o := &RunnerStater{
 				runner: tt.fields.runner,
 			}
-			if err := o.Move(tt.args.src, tt.args.dst, tt.args.options); (err != nil) != tt.wantErr {
+			err := o.Move(tt.args.src, tt.args.dst, tt.args.options)
+			if !reflect.DeepEqual(tt.fields.runner.callsRun, tt.wantCallsRun) {
+				diff := pretty.Compare(tt.fields.runner.callsRun, tt.wantCallsRun)
+				t.Errorf("mockRunner.Run() calls = %v, want %v\ndiff\n%s", tt.fields.runner.callsRun, tt.wantCallsRun, diff)
+				return
+			}
+			if (err != nil) != tt.wantErr {
 				t.Errorf("RunnerStater.Move() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -196,23 +277,36 @@ func TestRunnerStater_Move(t *testing.T) {
 
 func TestRunnerStater_Pull(t *testing.T) {
 	type fields struct {
-		runner Runner
+		// runner Runner
+		runner *mockRunner // Explicitly use mockRunner to test expected calls
 	}
 	type args struct {
 		options PullOptions
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []byte
-		wantErr bool
+		name         string
+		fields       fields
+		args         args
+		wantCallsRun []*mockRunnerCallRun
+		want         []byte
+		wantErr      bool
 	}{
 		{
 			name: "success",
 			fields: fields{
 				runner: &mockRunner{
 					writeStdout: []byte(testRunnerStaterPullSuccessWriteStdout),
+				},
+			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"pull",
+						},
+					},
 				},
 			},
 			want: []byte(testRunnerStaterPullSuccessWriteStdout),
@@ -224,6 +318,17 @@ func TestRunnerStater_Pull(t *testing.T) {
 					returnErr: fmt.Errorf("error"),
 				},
 			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"pull",
+						},
+					},
+				},
+			},
 			wantErr: true,
 		},
 	}
@@ -233,6 +338,11 @@ func TestRunnerStater_Pull(t *testing.T) {
 				runner: tt.fields.runner,
 			}
 			got, err := o.Pull(tt.args.options)
+			if !reflect.DeepEqual(tt.fields.runner.callsRun, tt.wantCallsRun) {
+				diff := pretty.Compare(tt.fields.runner.callsRun, tt.wantCallsRun)
+				t.Errorf("mockRunner.Run() calls = %v, want %v\ndiff\n%s", tt.fields.runner.callsRun, tt.wantCallsRun, diff)
+				return
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RunnerStater.Pull() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -246,22 +356,39 @@ func TestRunnerStater_Pull(t *testing.T) {
 
 func TestRunnerStater_Push(t *testing.T) {
 	type fields struct {
-		runner Runner
+		// runner Runner
+		runner *mockRunner // Explicitly use mockRunner to test expected calls
 	}
 	type args struct {
 		path    string
 		options PushOptions
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name         string
+		fields       fields
+		args         args
+		wantCallsRun []*mockRunnerCallRun
+		wantErr      bool
 	}{
 		{
 			name: "success",
 			fields: fields{
 				runner: &mockRunner{},
+			},
+			args: args{
+				path: "./state.tfstate",
+			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"push",
+							"./state.tfstate",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -269,6 +396,21 @@ func TestRunnerStater_Push(t *testing.T) {
 			fields: fields{
 				runner: &mockRunner{
 					returnErr: fmt.Errorf("error"),
+				},
+			},
+			args: args{
+				path: "./state.tfstate",
+			},
+			wantCallsRun: []*mockRunnerCallRun{
+				{
+					cmd: &exec.Cmd{
+						Args: []string{
+							"terraform",
+							"state",
+							"push",
+							"./state.tfstate",
+						},
+					},
 				},
 			},
 			wantErr: true,
@@ -279,7 +421,13 @@ func TestRunnerStater_Push(t *testing.T) {
 			o := &RunnerStater{
 				runner: tt.fields.runner,
 			}
-			if err := o.Push(tt.args.path, tt.args.options); (err != nil) != tt.wantErr {
+			err := o.Push(tt.args.path, tt.args.options)
+			if !reflect.DeepEqual(tt.fields.runner.callsRun, tt.wantCallsRun) {
+				diff := pretty.Compare(tt.fields.runner.callsRun, tt.wantCallsRun)
+				t.Errorf("mockRunner.Run() calls = %v, want %v\ndiff\n%s", tt.fields.runner.callsRun, tt.wantCallsRun, diff)
+				return
+			}
+			if (err != nil) != tt.wantErr {
 				t.Errorf("RunnerStater.Push() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
